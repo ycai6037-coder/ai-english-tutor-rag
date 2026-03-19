@@ -1,6 +1,6 @@
 /**
  * AI English Coach - Chat API
- * @version 4.0.1 - 修复 RAG 开关逻辑与调试增强
+ * @version 4.0.1 - 修复 RAG 空值处理与调试增强
  * @description 支持 DeepSeek API + RAG 知识库检索的英语学习助手
  */
 import { JinaEmbeddings } from "@langchain/community/embeddings/jina";
@@ -39,16 +39,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // --- [修复开始] RAG 检索逻辑增强 ---
+    // --- [修复开始] RAG 逻辑增强 ---
     let ragContext = '';
-    // 【严格判断】只有显式等于 true 才开启
+    // 【严格判断】必须显式等于布尔值 true
     let ragEnabled = (useRag === true);
 
-    // 🔍 新增调试日志：请在 Vercel Functions 日志中查看此信息
-    console.log('🔍 [DEBUG] RAG 状态检查:', { 
-      receivedUseRag: useRag, 
+    // 🔍 新增调试日志：确认前端传参是否正确
+    console.log('🔍 [DEBUG] RAG 参数检查:', { 
+      received: useRag, 
       type: typeof useRag, 
-      willExecute: ragEnabled 
+      isEnabled: ragEnabled 
     });
 
     if (ragEnabled) {
@@ -56,11 +56,11 @@ export default async function handler(req, res) {
       try {
         ragContext = await retrieveRagContext(message);
         
-        // 【关键修复】如果检索结果为空，强制关闭 ragEnabled 并清空上下文
+        // 【关键修复】检查检索结果是否为空
         if (!ragContext || ragContext.trim().length === 0) {
-          console.log('⚠️ [RAG] 检索完成但未找到相关内容 (结果为空)');
+          console.warn('⚠️ [RAG] 检索完成但未找到相关内容 (结果为空)');
           ragContext = '';
-          ragEnabled = false; // 标记为未使用，避免 Prompt 注入空块
+          ragEnabled = false; // 强制标记为未启用，防止 Prompt 注入空块
         } else {
           console.log('✅ [RAG] 检索成功，内容长度:', ragContext.length);
         }
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
         ragEnabled = false;
       }
     } else {
-      console.log('🚫 [RAG] 已禁用 (useRag !== true)，跳过检索步骤');
+      console.log('🚫 [RAG] 未开启 (useRag !== true)，跳过检索步骤');
       ragContext = '';
     }
     // --- [修复结束] ---
@@ -169,7 +169,7 @@ async function retrieveRagContext(query) {
   const upstashToken = process.env.UPSTASH_VECTOR_REST_TOKEN;
 
   if (!jinaApiKey || !upstashUrl || !upstashToken) {
-    console.log('RAG 配置不完整，跳过检索');
+    console.log('⚠️ [RAG] 配置不完整 (缺少环境变量)，跳过检索');
     return '';
   }
 
@@ -203,7 +203,7 @@ async function retrieveRagContext(query) {
     
     return '';
   } catch (error) {
-    console.error('RAG 检索错误:', error);
+    console.error('❌ [RAG] 检索错误:', error);
     return '';
   }
 }
