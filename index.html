@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI English Coach | 智能英语学习伴侣</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: rgba(99, 102, 241, 0.15);
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --border-light: rgba(255, 255, 255, 0.4);
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --shadow-soft: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            --shadow-glass: inset 0 0 20px 2px rgba(255, 255, 255, 0.2);
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+        }
+        
+        body { 
+            background: linear-gradient(135deg, #e0f2fe, #fce7f3);
+            color: var(--text-main); 
+            height: 100vh; 
+            display: flex; 
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Decorative Elements Background */
+        .decorative-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .decoration {
+            position: absolute;
+            opacity: 0.15;
+            animation: float 8s ease-in-out infinite;
+            font-size: 3rem;
+        }
+
+        .decoration:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+        .decoration:nth-child(2) { top: 25%; right: 10%; animation-delay: -2s; }
+        .decoration:nth-child(3) { bottom: 15%; left: 15%; animation-delay: -4s; }
+        .decoration:nth-child(4) { bottom: 30%; right: 20%; animation-delay: -6s; }
+        .decoration:nth-child(5) { top: 50%; left: 30%; animation-delay: -1s; }
+        .decoration:nth-child(6) { top: 65%; right: 30%; animation-delay: -3s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 10;
+            position: relative;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-sub);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-item:hover { 
+            background: rgba(255, 255, 255, 0.4); 
+            color: var(--primary); 
+            transform: translateX(4px);
+        }
+        .nav-item.active { 
+            background: var(--primary); 
+            color: white; 
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .user-profile {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .avatar { 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            background: linear-gradient(135deg, #6366f1, #ec4899);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding: 24px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .workspace {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: var(--shadow-soft);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            border: 1px solid var(--border-light);
+        }
+
+        .workspace-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .workspace-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .mode-btn {
+            padding: 6px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active { 
+            background: white; 
+            color: var(--primary); 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            flex: 1;
+            padding: 24px;
+            flex-direction: column;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .tab-content.active { display: flex; }
+
+        /* Writing Tab */
+        .editor-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            flex: 1;
+            min-height: 200px;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        textarea:focus { 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4); 
+        }
+        .btn-primary:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+            transform: none; 
+        }
+
+        /* Conversation Tab */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            border: 1px solid var(--border-light);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .msg-ai {
+            background: rgba(243, 244, 246, 0.6);
+            color: var(--text-main);
+            border-bottom-left-radius: 4px;
+            align-self: flex-start;
+        }
+
+        .msg-user {
+            background: rgba(224, 231, 255, 0.7);
+            color: var(--primary);
+            border-bottom-right-radius: 4px;
+            align-self: flex-end;
+            text-align: right;
+        }
+
+        .msg-ai pre {
+            background: #1e293b;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+            color: #e2e8f0;
+        }
+
+        .msg-ai code {
+            background: #334155;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+        }
+
+        .msg-ai pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .msg-ai table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+        }
+
+        .msg-ai th, .msg-ai td {
+            border: 1px solid var(--border-light);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .msg-ai th {
+            background: rgba(243, 244, 246, 0.4);
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            border-top: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        textarea.input-text {
+            flex: 1;
+            min-height: 60px;
+            padding: 12px 16px;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            font-size: 1rem;
+            resize: vertical;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .input-row textarea.input-text:focus { 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .image-upload {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .upload-btn {
+            background: var(--primary-light);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--primary);
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .upload-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .image-preview {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+            object-fit: cover;
+        }
+
+        .btn-send {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-send:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4); 
+        }
+        .btn-send:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+            transform: none; 
+        }
+
+        /* History Tab */
+        .history-tab {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.6);
+            transform: translateX(4px);
+        }
+
+        .history-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .history-date {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+
+        .history-content {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .no-history {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-sub);
+        }
+
+        /* Profile Tab */
+        .profile-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .form-select, .form-input {
+            padding: 12px 16px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .form-select:focus, .form-input:focus { 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Analysis Card */
+        .analysis-card {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .score-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(243, 244, 246, 0.4);
+            border-radius: 8px;
+        }
+
+        .score-val { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+        .score-label { font-size: 0.75rem; color: var(--text-sub); }
+
+        /* Error Markers */
+        .error-highlight {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .err-grammar { border-bottom: 2px wavy var(--danger); }
+        .err-vocab { border-bottom: 2px dotted var(--warning); }
+        .err-style { border-bottom: 2px dashed var(--secondary); }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        .error-highlight:hover .tooltip { opacity: 1; }
+
+        /* Progress Section */
+        .progress-section {
+            padding: 20px;
+            border-top: 1px solid var(--border-light);
+        }
+        .progress-bar {
+            height: 6px;
+            background: rgba(243, 244, 246, 0.4);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        /* Welcome Message */
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-sub);
+        }
+
+        .welcome-message .emoji {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .welcome-message h4 {
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        /* Loading */
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+                padding: 10px;
+            }
+            .logo span:last-child,
+            .nav-item span:last-child,
+            .user-profile .profile-info {
+                display: none;
+            }
+            .nav-item {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Decorative Elements -->
+    <div class="decorative-elements">
+        <div class="decoration">📚</div>
+        <div class="decoration">💭</div>
+        <div class="decoration">🌍</div>
+        <div class="decoration">🎧</div>
+        <div class="decoration">📝</div>
+        <div class="decoration">🎯</div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <span>🚀</span>
+            <span>AI English Coach</span>
+        </div>
+        
+        <div class="nav-item active" data-tab="conversation">
+            <span>💬</span>
+            <span>自由对话</span>
+        </div>
+        <div class="nav-item" data-tab="writing">
+            <span>✍️</span>
+            <span>作文批改</span>
+        </div>
+        <div class="nav-item" data-tab="history">
+            <span>📜</span>
+            <span>历史对话</span>
+        </div>
+        <div class="nav-item" data-tab="profile">
+            <span>⚙️</span>
+            <span>个人画像</span>
+        </div>
+
+        <div class="user-profile">
+            <div class="profile-header">
+                <div class="avatar" id="userAvatar">U</div>
+                <div class="profile-info">
+                    <div style="font-weight: 600;" id="userName">未设置</div>
+                    <div style="font-size: 0.8rem; color: var(--text-sub);" id="userLevel">点击设置画像</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        
+        <!-- Workspace: Conversation & Writing & History & Profile -->
+        <div class="workspace">
+            <div class="workspace-header">
+                <div class="workspace-title" id="workspaceTitle">自由对话</div>
+                <div class="mode-switch" id="modeSwitch" style="display: none;">
+                    <button class="mode-btn active" data-mode="conversation">对话模式</button>
+                    <button class="mode-btn" data-mode="writing">写作模式</button>
+                </div>
+            </div>
+            
+            <!-- Conversation Tab -->
+            <div class="tab-content active" id="conversationTab">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="welcome-message">
+                            <div class="emoji">🎓</div>
+                            <h4>欢迎来到 AI English Coach!</h4>
+                            <p>我是你的英语学习伴侣，可以帮你：</p>
+                            <p style="margin-top: 8px;">💬 进行自然语言对话</p>
+                            <p>🖼️ 识别图片中的文字并翻译</p>
+                            <p>✍️ 批改作文并提供详细反馈</p>
+                            <p style="margin-top: 12px; font-size: 0.9rem;">开始和我聊天吧！</p>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="input-container">
+                            <div class="input-row">
+                                <textarea class="input-text" id="conversationInput" placeholder="输入您的英文问题..."></textarea>
+                                <button class="btn-send" id="sendBtn" onclick="sendConversation()">
+                                    <span>💬</span> 发送
+                                </button>
+                            </div>
+                            <div class="image-upload">
+                                <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                                <button class="upload-btn" onclick="document.getElementById('imageUpload').click();">
+                                    <span>🖼️</span> 上传图片
+                                </button>
+                                <div id="imagePreviewContainer"></div>
+                                <label class="rag-toggle" style="margin-left: auto; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="ragToggle" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span style="font-size: 0.9rem; color: var(--text-main);">📚 教材辅助模式</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Writing Tab -->
+            <div class="tab-content" id="writingTab">
+                <div class="chat-container">
+                    <div class="chat-messages" id="writingMessages">
+                        <div class="welcome-message">
+                            <div class="emoji">✍️</div>
+                            <h4>AI 英语作文批改助手</h4>
+                            <p>请在下方输入框中粘贴您的英文作文</p>
+                            <p>完成后点击发送按钮，我将为您提供详细的批改意见</p>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="input-container">
+                            <div class="input-row">
+                                <textarea class="input-text" id="writingInput" placeholder="在此输入您的英文作文..."></textarea>
+                                <button class="btn-send" id="writingSendBtn" onclick="sendWriting()">
+                                    <span>✨</span> 开始批改
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div class="tab-content" id="historyTab">
+                <div class="history-tab" id="historyContent">
+                    <div class="no-history" id="noHistoryMessage">
+                        <div class="emoji">📜</div>
+                        <h4>暂无历史记录</h4>
+                        <p>与AI的对话和作文批改都会在这里显示</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Tab -->
+            <div class="tab-content" id="profileTab">
+                <div class="profile-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">基础水平</label>
+                            <select class="form-select" id="profileLevel">
+                                <option value="">请选择</option>
+                                <option value="零基础">零基础</option>
+                                <option value="初级">初级</option>
+                                <option value="中级">中级</option>
+                                <option value="高级">高级</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">学习目标</label>
+                            <select class="form-select" id="profileGoal">
+                                <option value="">请选择</option>
+                                <option value="日常交流">日常交流</option>
+                                <option value="考试备考">考试备考</option>
+                                <option value="工作需要">工作需要</option>
+                                <option value="留学准备">留学准备</option>
+                                <option value="兴趣爱好">兴趣爱好</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">年龄阶段</label>
+                            <select class="form-select" id="profileAge">
+                                <option value="">请选择</option>
+                                <option value="青少年">青少年</option>
+                                <option value="大学生">大学生</option>
+                                <option value="职场人士">职场人士</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">学习风格</label>
+                            <select class="form-select" id="profileStyle">
+                                <option value="">请选择</option>
+                                <option value="视觉型">视觉型</option>
+                                <option value="听觉型">听觉型</option>
+                                <option value="实践型">实践型</option>
+                                <option value="理论型">理论型</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">性格特点</label>
+                        <select class="form-select" id="profilePersonality">
+                            <option value="">请选择</option>
+                            <option value="内向">内向</option>
+                            <option value="外向">外向</option>
+                            <option value="严谨">严谨</option>
+                            <option value="随性">随性</option>
+                            <option value="完美主义">完美主义</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">每日学习时间</label>
+                        <select class="form-select" id="profileTime">
+                            <option value="">请选择</option>
+                            <option value="15分钟">15分钟</option>
+                            <option value="30分钟">30分钟</option>
+                            <option value="1小时">1小时</option>
+                            <option value="2小时以上">2小时以上</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">昵称（可选）</label>
+                        <input type="text" class="form-input" id="profileName" placeholder="输入你的昵称">
+                    </div>
+                    <button class="btn-primary" onclick="saveProfile()">
+                        <span>💾</span> 保存画像
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let conversationHistory = [];
+        let writingHistory = [];
+        let learningHistory = [];
+        let userProfile = {};
+        let currentTab = 'conversation';
+        let isLoading = false;
+        let uploadedImage = null;
+        let uploadedImageBase64 = null;
+
+        // API Configuration - 使用相对路径调用同域API
+        const API_ENDPOINT = '/api/chat';
+
+        // DOM Elements
+        const chatMessages = document.getElementById('chatMessages');
+        const writingMessages = document.getElementById('writingMessages');
+        const sendBtn = document.getElementById('sendBtn');
+        const writingSendBtn = document.getElementById('writingSendBtn');
+        const workspaceTitle = document.getElementById('workspaceTitle');
+        const historyContent = document.getElementById('historyContent');
+        const noHistoryMessage = document.getElementById('noHistoryMessage');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            renderProfile();
+            renderHistory();
+            setupEventListeners();
+        });
+
+        // Event Listeners Setup
+        function setupEventListeners() {
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const tab = this.dataset.tab;
+                    currentTab = tab;
+                    switchTab(tab);
+                });
+            });
+
+            // Image Upload
+            document.getElementById('imageUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    uploadedImage = file;
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        // 存储base64数据（去掉前缀）
+                        uploadedImageBase64 = event.target.result.split(',')[1];
+                        document.getElementById('imagePreviewContainer').innerHTML = 
+                            `<img src="${event.target.result}" class="image-preview">
+                             <button class="upload-btn" style="margin-left:8px;background:#fee2e2;color:#dc2626;" onclick="clearUploadedImage()">✕ 清除</button>`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Enter key support for conversation input
+            document.getElementById('conversationInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendConversation();
+                }
+            });
+
+            // Enter key support for writing input
+            document.getElementById('writingInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendWriting();
+                }
+            });
+        }
+
+        // Clear uploaded image
+        function clearUploadedImage() {
+            uploadedImage = null;
+            uploadedImageBase64 = null;
+            document.getElementById('imagePreviewContainer').innerHTML = '';
+            document.getElementById('imageUpload').value = '';
+        }
+
+        function switchTab(tab) {
+            const titles = {
+                'conversation': '自由对话',
+                'writing': '作文批改',
+                'history': '历史对话',
+                'profile': '个人画像'
+            };
+            
+            workspaceTitle.textContent = titles[tab];
+            
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab + 'Tab').classList.add('active');
+
+            // If switching to history tab, re-render to ensure latest data
+            if (tab === 'history') {
+                renderHistory();
+            }
+        }
+
+        // Send Conversation
+        async function sendConversation() {
+            const inputEl = document.getElementById('conversationInput');
+            const text = inputEl.value.trim();
+            if (!text && !uploadedImageBase64) {
+                alert('请输入要发送的内容或上传图片！');
+                return;
+            }
+            if (isLoading) return;
+
+            // Create user message
+            let userMessage = text;
+            let messageForAPI = text || '请描述这张图片的内容';
+
+            // 如果有图片，构建多模态消息
+            if (uploadedImageBase64) {
+                userMessage += ' [图片]';
+            }
+
+            // 立即清空输入框和图片（在发送消息前）
+            inputEl.value = '';
+            const currentImageBase64 = uploadedImageBase64;
+            clearUploadedImage();
+
+            addMessage('conversation', 'user', userMessage);
+            showLoading('conversation');
+
+            try {
+                // 构建对话历史（最近6轮）
+                const historyForAPI = conversationHistory.slice(-12).map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                }));
+
+                // 调用真实API，如果有图片则发送图片
+                const useRag = document.getElementById('ragToggle').checked;
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: messageForAPI,
+                        scenario: 'daily',
+                        userProfile: userProfile,
+                        personality: '温暖伙伴',
+                        history: historyForAPI,
+                        image: currentImageBase64 || null,
+                        useRag: useRag
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.reply || '抱歉，我无法生成回复。';
+
+                hideLoading('conversation');
+                addMessage('conversation', 'ai', aiResponse);
+
+                // Update conversation history
+                conversationHistory.push(
+                    { role: 'user', content: userMessage, timestamp: Date.now() },
+                    { role: 'assistant', content: aiResponse, timestamp: Date.now() }
+                );
+
+                // Save learning history
+                learningHistory.push({
+                    type: 'conversation',
+                    title: '对话',
+                    content: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+                    timestamp: Date.now()
+                });
+
+                saveToStorage();
+                renderHistory();
+
+            } catch (error) {
+                hideLoading('conversation');
+                addMessage('conversation', 'error', `请求失败: ${error.message}`);
+                console.error('API Error:', error);
+            }
+        }
+
+        // Send Writing
+        async function sendWriting() {
+            const inputEl = document.getElementById('writingInput');
+            const text = inputEl.value.trim();
+            if (!text) {
+                alert('请输入要批改的作文内容！');
+                return;
+            }
+            if (isLoading) return;
+
+            // 立即清空输入框（在发送消息前）
+            inputEl.value = '';
+
+            addMessage('writing', 'user', text);
+            showLoading('writing');
+
+            try {
+                // 构建对话历史
+                const historyForAPI = writingHistory.slice(-6).map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                }));
+
+                // 调用真实API，使用写作批改模式
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: `请批改以下英文作文：\n\n${text}`,
+                        mode: 'writing',
+                        scenario: 'ielts',
+                        userProfile: userProfile,
+                        personality: '严谨教授',
+                        history: historyForAPI
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.reply || '抱歉，无法完成批改。';
+
+                hideLoading('writing');
+                addMessage('writing', 'ai', aiResponse);
+
+                // Update writing history
+                writingHistory.push(
+                    { role: 'user', content: text, timestamp: Date.now() },
+                    { role: 'assistant', content: aiResponse, timestamp: Date.now() }
+                );
+
+                // Save learning history
+                learningHistory.push({
+                    type: 'writing',
+                    title: '作文批改',
+                    content: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+                    timestamp: Date.now()
+                });
+
+                saveToStorage();
+                renderHistory();
+
+            } catch (error) {
+                hideLoading('writing');
+                addMessage('writing', 'error', `请求失败: ${error.message}`);
+                console.error('API Error:', error);
+            }
+        }
+
+        // Add Message to Chat
+        function addMessage(chatType, type, content) {
+            const messagesContainer = chatType === 'conversation' ? chatMessages : writingMessages;
+            const welcomeMsg = messagesContainer.querySelector('.welcome-message');
+            if (welcomeMsg) welcomeMsg.remove();
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type === 'user' ? 'msg-user' : type === 'error' ? 'msg-ai' : 'msg-ai'}`;
+
+            if (type === 'error') {
+                msgDiv.style.background = 'rgba(254, 242, 242, 0.6)';
+                msgDiv.style.color = '#dc2626';
+                msgDiv.style.border = '1px solid rgba(254, 202, 202, 0.5)';
+            }
+
+            const label = type === 'user' ? 'You' : type === 'error' ? 'Error' : 'AI Tutor';
+
+            msgDiv.innerHTML = `
+                <div style="font-size: 0.75rem; color: var(--text-sub); margin-bottom: 4px;">${label}</div>
+                <div class="message-content">
+                    ${type === 'user' ? escapeHtml(content) : marked.parse(content)}
+                </div>
+            `;
+
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Render History Tab
+        function renderHistory() {
+            const container = document.getElementById('historyContent');
+            container.innerHTML = '';
+
+            // 使用learningHistory来渲染
+            if (learningHistory.length === 0) {
+                container.innerHTML = `<div class="no-history"><div class="emoji">📜</div><h4>暂无历史记录</h4><p>与AI的对话和作文批改都会在这里显示</p></div>`;
+                return;
+            }
+
+            // 按时间倒序排列
+            const sortedHistory = [...learningHistory].sort((a, b) => b.timestamp - a.timestamp);
+
+            sortedHistory.forEach(item => {
+                const date = new Date(item.timestamp).toLocaleString('zh-CN');
+                const content = item.content.length > 100 ? item.content.substring(0, 100) + '...' : item.content;
+
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.onclick = () => loadHistoryDetail(item);
+
+                historyItem.innerHTML = `
+                    <div class="history-title">${item.title || (item.type === 'writing' ? '作文批改' : '对话')}</div>
+                    <div class="history-date">${date}</div>
+                    <div class="history-content">${content}</div>
+                `;
+
+                container.appendChild(historyItem);
+            });
+        }
+
+        // Loading States
+        function showLoading(type) {
+            isLoading = true;
+            const isConversation = type === 'conversation';
+            const btn = isConversation ? sendBtn : writingSendBtn;
+            const otherBtn = isConversation ? writingSendBtn : sendBtn;
+
+            btn.disabled = true;
+            btn.innerHTML = isConversation ? '<span>⏳</span> 思考中...' : '<span>⏳</span> 分析中...';
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-message';
+            loadingDiv.className = 'message msg-ai';
+            loadingDiv.innerHTML = '<span class="loading-dots">思考中</span>';
+
+            const messagesContainer = isConversation ? chatMessages : writingMessages;
+            messagesContainer.appendChild(loadingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideLoading(type) {
+            isLoading = false;
+            const isConversation = type === 'conversation';
+
+            sendBtn.disabled = false;
+            writingSendBtn.disabled = false;
+            sendBtn.innerHTML = '<span>💬</span> 发送';
+            writingSendBtn.innerHTML = '<span>✨</span> 开始批改';
+
+            const loadingDiv = document.getElementById('loading-message');
+            if (loadingDiv) loadingDiv.remove();
+        }
+
+        // Render History Tab
+        function renderHistory() {
+            const container = document.getElementById('historyContent');
+            container.innerHTML = '';
+
+            // 使用learningHistory来渲染
+            if (learningHistory.length === 0) {
+                container.innerHTML = `<div class="no-history"><div class="emoji">📜</div><h4>暂无历史记录</h4><p>与AI的对话和作文批改都会在这里显示</p></div>`;
+                return;
+            }
+
+            // 按时间倒序排列
+            const sortedHistory = [...learningHistory].sort((a, b) => b.timestamp - a.timestamp);
+
+            sortedHistory.forEach(item => {
+                const date = new Date(item.timestamp).toLocaleString('zh-CN');
+                const content = item.content.length > 100 ? item.content.substring(0, 100) + '...' : item.content;
+
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.onclick = () => loadHistoryDetail(item);
+
+                historyItem.innerHTML = `
+                    <div class="history-title">${item.title || (item.type === 'writing' ? '作文批改' : '对话')}</div>
+                    <div class="history-date">${date}</div>
+                    <div class="history-content">${content}</div>
+                `;
+
+                container.appendChild(historyItem);
+            });
+        }
+
+        // Load detailed history
+        function loadHistoryDetail(item) {
+            alert(`这是您在 ${new Date(item.timestamp).toLocaleString()} 的记录:\n\n${item.content}`);
+        }
+
+        // Render Profile
+        function renderProfile() {
+            if (userProfile.level) document.getElementById('profileLevel').value = userProfile.level;
+            if (userProfile.goal) document.getElementById('profileGoal').value = userProfile.goal;
+            if (userProfile.ageGroup) document.getElementById('profileAge').value = userProfile.ageGroup;
+            if (userProfile.style) document.getElementById('profileStyle').value = userProfile.style;
+            if (userProfile.personality) document.getElementById('profilePersonality').value = userProfile.personality;
+            if (userProfile.studyTime) document.getElementById('profileTime').value = userProfile.studyTime;
+            if (userProfile.name) document.getElementById('profileName').value = userProfile.name;
+
+            updateUserDisplay();
+        }
+
+        // Save Profile
+        function saveProfile() {
+            userProfile = {
+                level: document.getElementById('profileLevel').value,
+                goal: document.getElementById('profileGoal').value,
+                ageGroup: document.getElementById('profileAge').value,
+                style: document.getElementById('profileStyle').value,
+                personality: document.getElementById('profilePersonality').value,
+                studyTime: document.getElementById('profileTime').value,
+                name: document.getElementById('profileName').value
+            };
+
+            saveToStorage();
+            updateUserDisplay();
+            alert('画像已保存！我会根据你的情况调整教学内容和风格。' + getStudyPlanSuggestion());
+        }
+
+        function getStudyPlanSuggestion() {
+            if (userProfile.level && userProfile.goal) {
+                return `\n\n根据你设定的「${userProfile.level}」水平和「${userProfile.goal}」目标，建议你：\n- 每日练习写作或阅读${userProfile.studyTime || '30分钟'}\n- 重点突破语法和词汇\n- 定期查看学习报告追踪进度`;
+            }
+            return '';
+        }
+
+        function updateUserDisplay() {
+            const avatar = document.getElementById('userAvatar');
+            const userName = document.getElementById('userName');
+            const userLevel = document.getElementById('userLevel');
+
+            if (userProfile.name) {
+                avatar.textContent = userProfile.name.charAt(0).toUpperCase();
+                userName.textContent = userProfile.name;
+            }
+            if (userProfile.level) {
+                userLevel.textContent = userProfile.level + ' | ' + (userProfile.goal || '');
+            }
+        }
+
+        // Storage Functions
+        function saveToStorage() {
+            localStorage.setItem('chatHistory', JSON.stringify(conversationHistory));
+            localStorage.setItem('writingHistory', JSON.stringify(writingHistory));
+            localStorage.setItem('learningHistory', JSON.stringify(learningHistory));
+            localStorage.setItem('userProfile', JSON.stringify(userProfile));
+        }
+
+        function loadFromStorage() {
+            const history = localStorage.getItem('chatHistory');
+            const writing = localStorage.getItem('writingHistory');
+            const learning = localStorage.getItem('learningHistory');
+            const profile = localStorage.getItem('userProfile');
+
+            if (history) conversationHistory = JSON.parse(history);
+            if (writing) writingHistory = JSON.parse(writing);
+            if (learning) learningHistory = JSON.parse(learning);
+            if (profile) userProfile = JSON.parse(profile);
+        }
+
+        // Utility
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
